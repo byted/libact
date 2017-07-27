@@ -18,7 +18,7 @@ from libact.base.interfaces import ProbabilisticModel
 
 class JSRE(ProbabilisticModel):
 
-    """Wrapper for jSRE classifier utilizing a SVM with a shallow lingusitics kernel
+    """Wrapper for jSRE classifier utilizing a SVM with a shallow linguistics kernel
 
     References
     ----------
@@ -26,15 +26,17 @@ class JSRE(ProbabilisticModel):
 
     """
 
-    def __init__(self, model_path, jsre_path, tmp_dir='/tmp'):
+    def __init__(self, model_path, jsre_path, tmp_dir='/tmp', cache_size=1024, n_gram=3, window_size=2, C=None, max_memory=2048, kernel='SL'):
         """model_path => where to save the model to"""
         self.tmp_dir = tmp_dir
         self.model = model_path
-        self.classpath = './bin:./lib/*'.format(jsre_path, jsre_path)
+        self.classpath = './bin:./lib/*'
         self.jsre_path = jsre_path
-        self.max_memory = '-mx1024M'
+        self.max_memory = '-mx{}M'.format(max_memory)
+        self.jsre_paras = '-m {} -k {} -n {} -w {}'.format(cache_size, kernel, n_gram, window_size) + \
+                          (' -c {}'.format(C) if C is not None else '')
         self.predict_template = 'java -cp {cp} {memory} org.itc.irst.tcc.sre.Predict {to_predict} {model} {output}'
-        self.train_template = 'java -cp {cp} {memory} org.itc.irst.tcc.sre.Train -m 512 -k SL -n 3 -w 2 {to_train} {model_output}'
+        self.train_template = 'java -cp {cp} {memory} org.itc.irst.tcc.sre.Train {jsre_paras} {to_train} {model_output}'
 
     def __generate_timestamp(self):
         return datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
@@ -45,6 +47,7 @@ class JSRE(ProbabilisticModel):
         return os.path.join(self.tmp_dir, '{}-{}-{}.jsre'.format(string, ts, rnd))
 
     def __run_command(self, cmd, output_file=None):
+        LOGGER.info('Running "{}"'.format(cmd))
         try:
             pc = subprocess.run(cmd.split(' '), check=True, stdout=subprocess.PIPE,
                                 cwd=self.jsre_path)
@@ -56,9 +59,6 @@ class JSRE(ProbabilisticModel):
         except subprocess.CalledProcessError as e:
             LOGGER.error('Could not run "{}": {}'.format(cmd, e))
             sys.exit(-1)
-        # except FileNotFoundError:
-        #     LOGGER.error('Could not find output file "{}".'.format(output_file))
-        #     sys.exit(-1)
 
     def __raw_predict(self, instances):
         ts = self.__generate_timestamp()
@@ -88,7 +88,7 @@ class JSRE(ProbabilisticModel):
 
         cmd = self.train_template.format(
             cp=self.classpath, memory=self.max_memory, model_output=self.model,
-            to_train=tmp_training_file)
+            to_train=tmp_training_file, jsre_paras=self.jsre_paras)
 
         self.__run_command(cmd)
         try:
