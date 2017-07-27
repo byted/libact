@@ -10,6 +10,7 @@ import numpy as np
 import logging
 import datetime
 import time
+import random
 LOGGER = logging.getLogger(__name__)
 
 from libact.base.interfaces import ProbabilisticModel
@@ -40,7 +41,8 @@ class JSRE(ProbabilisticModel):
 
     def __get_tmp_filename(self, string):
         ts = self.__generate_timestamp()
-        return os.path.join(self.tmp_dir, '{}-{}.jsre'.format(string, ts))
+        rnd = ''.join(random.choices('abcdfeghijklmnopqrstuvwxyz0123456789', k=5))
+        return os.path.join(self.tmp_dir, '{}-{}-{}.jsre'.format(string, ts, rnd))
 
     def __run_command(self, cmd, output_file=None):
         try:
