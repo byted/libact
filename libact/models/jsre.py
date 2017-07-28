@@ -47,7 +47,7 @@ class JSRE(ProbabilisticModel):
         return os.path.join(self.tmp_dir, '{}-{}-{}.jsre'.format(string, ts, rnd))
 
     def __run_command(self, cmd, output_file=None):
-        LOGGER.info('Running "{}"'.format(cmd))
+        # print('Running "{}"'.format(cmd))
         try:
             pc = subprocess.run(cmd.split(' '), check=True, stdout=subprocess.PIPE,
                                 cwd=self.jsre_path)
