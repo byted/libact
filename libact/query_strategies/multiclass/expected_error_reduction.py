@@ -3,6 +3,7 @@
 import copy
 
 import numpy as np
+import random
 
 from libact.base.interfaces import QueryStrategy, ProbabilisticModel
 from libact.base.dataset import Dataset
@@ -53,7 +54,7 @@ class EER(QueryStrategy):
            Wisconsin, Madison 52.55-66 (2010): 11.
     """
 
-    def __init__(self, dataset, model=None, loss='log', random_state=None):
+    def __init__(self, dataset, model=None, loss='log', random_state=None, random_sampling=None):
         super(EER, self).__init__(dataset)
 
         self.model = model
@@ -71,14 +72,27 @@ class EER(QueryStrategy):
                 "supported methods are ['01', 'log'], the given one "
                 "is: " + self.method
             )
-
+        self.random_sampling = random_sampling
+        if not (self.random_sampling is None or isinstance(self.random_sampling, int) or
+                isinstance(self.random_sampling, float)):
+            raise TypeError(
+                "random_sampling parameter has to be either None, int or float "
+                "is: " + str(self.random_sampling_type)
+            )
         self.random_state_ = seed_random_state(random_state)
 
     @inherit_docstring_from(QueryStrategy)
     def make_query(self):
         dataset = self.dataset
         X, y = zip(*dataset.get_labeled_entries())
-        unlabeled_entry_ids, X_pool = zip(*dataset.get_unlabeled_entries())
+        unlabled_entries = dataset.get_unlabeled_entries()
+
+        if isinstance(self.random_sampling, int):
+            unlabled_entries = random.sample(unlabled_entries, k=self.random_sampling)
+        elif isinstance(self.random_sampling, float):
+            unlabled_entries = random.sample(unlabled_entries, k=int(len(unlabled_entries) * self.random_sampling))
+
+        unlabeled_entry_ids, X_pool = zip(*unlabled_entries)
 
         classes = np.unique(y)
         n_classes = len(classes)
